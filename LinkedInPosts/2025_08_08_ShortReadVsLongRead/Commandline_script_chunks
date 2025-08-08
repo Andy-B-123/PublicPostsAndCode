@@ -1,0 +1,102 @@
+### Aim - to split up a fasta file into various chunks and re-map them
+### Submitted on SLURM on CSIRO HPC
+
+### Below was for the short-read runs, 250 and 500
+> cat SplitMap.BWA.slurm
+#!/bin/bash
+#SBATCH -A OD-234804
+#SBATCH --job-name=SplitMapAssess
+#SBATCH --time=2:00:00
+#SBATCH --mem=24gb
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=8
+#SBATCH --output=./logs/job_%A_%a.out
+#SBATCH --error=./logs/job_%A_%a.err
+#SBATCH --qos=express
+
+input_fasta_path=${1}
+input_split_amount=${2}
+output_base_name=${3}
+
+echo "Input FASTA Path: ${input_fasta_path}"
+echo "Input Split Amount: ${input_split_amount}"
+echo "Output Base Name: ${output_base_name}"
+
+set -e
+set -x
+
+# Debugging and validation prints:
+echo "Checking environment variables:"
+printenv
+
+mkdir -p ${output_base_name}
+cd ${output_base_name}
+
+### Module Load Section
+module load seqkit
+module load seqtk
+
+echo "Starting splitting for long-read with seqkit"
+output_split_seq_name="${output_base_name}.split.${input_split_amount}bp"
+seqkit sliding -s ${input_split_amount} -W ${input_split_amount} \
+     ${input_fasta_path} > ${output_split_seq_name}.fasta
+
+seqtk seq -F "I" ${output_split_seq_name}.fasta > ${output_split_seq_name}.fastq
+
+
+module load bwa-mem2
+bwa-mem2 mem ${input_fasta_path} ${output_split_seq_name}.fastq -t ${SLURM_NTASKS} -o ${output_split_seq_name}.map.bwa.sam
+
+module load samtools
+samtools sort -O BAM --write-index -o ${output_split_seq_name}.map.bwa.sort.bam ${output_split_seq_name}.map.bwa.sam
+
+
+
+### Below was set to -x sr only for SR mapping, by default was run without providing a preset arguement (eg for 5000, 10000 and 20000 all default)
+### -x sr improved the mapq relative to running without it
+cat SplitMap.slurm
+#!/bin/bash
+#SBATCH -A OD-234804
+#SBATCH --job-name=SplitMapAssess
+#SBATCH --time=2:00:00
+#SBATCH --mem=24gb
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=8
+#SBATCH --output=./logs/job_%A_%a.out
+#SBATCH --error=./logs/job_%A_%a.err
+#SBATCH --qos=express
+
+input_fasta_path=${1}
+input_split_amount=${2}
+output_base_name=${3}
+
+echo "Input FASTA Path: ${input_fasta_path}"
+echo "Input Split Amount: ${input_split_amount}"
+echo "Output Base Name: ${output_base_name}"
+
+set -e
+set -x
+
+# Debugging and validation prints:
+echo "Checking environment variables:"
+printenv
+
+mkdir -p ${output_base_name}
+cd ${output_base_name}
+
+### Module Load Section
+module load seqkit
+module load seqtk
+
+echo "Starting splitting for long-read with seqkit"
+output_split_seq_name="${output_base_name}.split.${input_split_amount}bp"
+seqkit sliding -s ${input_split_amount} -W ${input_split_amount} \
+     ${input_fasta_path} > ${output_split_seq_name}.fasta
+
+module load minimap2
+minimap2 -x sr ${input_fasta_path} ${output_split_seq_name}.fasta -a --secondary=no \
+ -o ${output_split_seq_name}.map.sr.sam
+
+module load samtools
+samtools sort -O BAM --write-index -o ${output_split_seq_name}.map.sr.sort.bam ${output_split_seq_name}.map.sr.sam
+
