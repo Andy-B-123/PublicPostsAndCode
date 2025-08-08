@@ -1,0 +1,153 @@
+---
+title: "HumanShortVsLongReadCheck"
+output: html_document
+date: "2025-08-07"
+---
+
+```{r}
+# ---- Load libraries ----
+library(tidyverse)
+library(cowplot)
+library(scales)
+
+# ---- Reusable function to process SAM file ----
+process_sam_file <- function(sam_path) {
+  read.delim(sam_path, header = FALSE, comment.char = "@") %>%
+    separate(V1, into = c("Chrom", "Chrom2"), remove = FALSE, sep = ":") %>%
+    separate(Chrom2, into = c("Read_real_start", "Read_real_end"), sep = "-", convert = TRUE) %>%
+    mutate(
+      colour_group = ifelse(V5 > 30, "above", "below"),
+      Read_real_start_Mbp = Read_real_start / 1e6
+    )
+}
+
+# ---- Reusable function to make a plot from a processed df ----
+make_mapping_quality_plot_legend <- function(df, label) {
+  ggplot(df, aes(x = Read_real_start_Mbp, y = V5, color = colour_group)) +
+    geom_point(size = 0.01) +
+    theme_minimal(base_size = 12) +
+    geom_hline(yintercept = 30, colour = 'black', linetype = "dashed") +
+    scale_color_manual(
+      values = c("above" = "#0072B2",  # Blue
+                 "below" = "#D55E00")  # Orange
+    ) +
+    scale_x_continuous(
+      name = element_blank(),
+      labels = label_number(scale = 1),
+      breaks = pretty(df$Read_real_start_Mbp, n = 10)
+    ) +
+    ggtitle(label) +
+    theme(
+      panel.grid.minor = element_blank()
+    ) +
+    ylab("")
+}
+base_size = 12
+make_mapping_quality_plot_most <- function(df, label) {
+  ggplot(df, aes(x = Read_real_start_Mbp, y = V5, color = colour_group)) +
+    geom_point(size = 0.01) +
+    theme_minimal(base_size = base_size) +
+    geom_hline(yintercept = 30, colour = 'black', linetype = "dashed") +
+    scale_color_manual(
+      values = c("above" = "#0072B2",  # Blue
+                 "below" = "#D55E00")  # Orange
+    ) +
+    scale_x_continuous(
+      name = element_blank(),
+      breaks = pretty(df$Read_real_start_Mbp, n = 10,
+    )) +
+    ggtitle(label) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      plot.title = element_text(
+        size = base_size * 0.8)
+      ) +
+    ylab("")
+}
+
+make_mapping_quality_plot_bottom <- function(df, label) {
+  ggplot(df, aes(x = Read_real_start_Mbp, y = V5, color = colour_group)) +
+    geom_point(size = 0.01) +
+    theme_minimal(base_size = base_size) +
+    geom_hline(yintercept = 30, colour = 'black', linetype = "dashed") +
+    scale_color_manual(
+      values = c("above" = "#0072B2",  # Blue
+                 "below" = "#D55E00")  # Orange
+    ) +
+    scale_x_continuous(
+      name = element_blank(),
+      labels = label_number(scale = 1),
+      breaks = pretty(df$Read_real_start_Mbp, n = 10)
+    ) +
+    ggtitle(label) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor = element_blank(),
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(
+        size = base_size * 0.8)
+    ) +
+    ylab("") +
+    xlab("Chromosome position (T2T Chrom 1)")
+}
+
+# ---- Read and process data once ----
+df_250   <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_250/split_250.split.250bp.map.sam")
+df_250_sr   <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_250/split_250.split.250bp.map.sr.sam")
+df_250_bwa   <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_250/split_250.split.250bp.map.bwa.sam")
+
+df_500   <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_500/split_500.split.500bp.map.sam")
+df_500_sr   <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_500/split_500.split.500bp.map.sr.sam")
+df_500_bwa   <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_500/split_500.split.500bp.map.bwa.sam")
+
+df_5000  <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_5000/split_5000.split.5000bp.map.sam")
+df_10000 <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_10000/split_10000.split.10000bp.map.sam")
+df_20000 <- process_sam_file("S:/trialsAndTribulations/2025_GenomeAssemblyPractice/AB_SimpleLongVsShortReads/split_20000/split_20000.split.20000bp.map.sam")
+
+
+# ---- Generate plots from already-loaded data ----
+p1 <- make_mapping_quality_plot_most(df_250, "Short-read 250bp, BWA-Mem2")
+p1_sr <- make_mapping_quality_plot_most(df_250_sr, "Short-read 250bp")
+p1_bwa <- make_mapping_quality_plot_most(df_250_bwa, "Short-read 250bp, BWA-Mem2")
+
+p2 <- make_mapping_quality_plot_most(df_500, "Short-read 500bp (pretend it's 2x250bp), BWA-Mem2")
+p2_sr <- make_mapping_quality_plot_most(df_500_sr, "Short-read 500bp (pretend it's 2x250bp)")
+p2_bwa <- make_mapping_quality_plot_most(df_500_bwa, "Short-read 500bp (pretend it's 2x250bp), BWA-Mem2")
+
+p3 <- make_mapping_quality_plot_most(df_5000, "Long-read 5kbp, minimap2")
+p4 <- make_mapping_quality_plot_most(df_10000, "Long-read 10kbp, minimap2")
+p5 <- make_mapping_quality_plot_bottom(df_20000, "Long-read 20kbp, minimap2")
+p5_legend <- make_mapping_quality_plot_legend(df_20000, "Long-read 20kbp")
+
+# ---- Combine and view ----
+
+p_for_legend <- p5_legend + 
+  # ensure only colour has a legend; silence everything else
+  guides(
+    colour   = guide_legend(title = "Quality\nthreshold"),  # your only legend
+    fill     = "none",
+    shape    = "none",
+    linetype = "none",
+    size     = "none",
+    alpha    = "none"
+  ) +
+  # just in case: stop non-data geoms from creating legends
+  theme(legend.position = "right")
+shared_legend <- get_legend(p_for_legend)
+
+grid <- plot_grid(p1_bwa, p2_bwa, p3, p4, p5, ncol = 1, align = "v",
+                  rel_heights = c(1, 1, 1, 1, 1.5))
+grid
+final <- plot_grid(grid, shared_legend, rel_widths = c(1, 0.12))
+final
+
+final_yaxis <- ggdraw() +
+  draw_label("Mapping Quality", angle = 90, vjust = -28, size = 10) +
+  draw_plot(final, x = 0.05, width = 0.90, height = 0.90)
+final_yaxis
+
+save_plot("final_yaxis.png",final_yaxis)
+```
