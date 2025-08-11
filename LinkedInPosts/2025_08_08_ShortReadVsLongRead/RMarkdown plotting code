@@ -56,6 +56,10 @@ make_mapping_quality_plot_most <- function(df, label) {
       name = element_blank(),
       breaks = pretty(df$Read_real_start_Mbp, n = 10,
     )) +
+    scale_y_continuous(
+      breaks = c(0, 30, 60),
+      limits = c(0, 60)
+    )+
     ggtitle(label) +
     theme(
       legend.position = "none",
@@ -63,7 +67,7 @@ make_mapping_quality_plot_most <- function(df, label) {
       axis.text.x = element_blank(),
       axis.ticks.x = element_blank(),
       plot.title = element_text(
-        size = base_size * 0.8)
+        size = base_size * 0.5)
       ) +
     ylab("")
 }
@@ -78,20 +82,23 @@ make_mapping_quality_plot_bottom <- function(df, label) {
                  "below" = "#D55E00")  # Orange
     ) +
     scale_x_continuous(
-      name = element_blank(),
+      name = "Chromosome position (T2T Chrom 1, Mbp)",
       labels = label_number(scale = 1),
       breaks = pretty(df$Read_real_start_Mbp, n = 10)
     ) +
+    scale_y_continuous(
+      breaks = c(0, 30, 60),
+      limits = c(0, 60)
+    )+
     ggtitle(label) +
     theme(
       legend.position = "none",
       panel.grid.minor = element_blank(),
       axis.text.x = element_text(angle = 45, hjust = 1),
       plot.title = element_text(
-        size = base_size * 0.8)
+        size = base_size * 0.5)
     ) +
-    ylab("") +
-    xlab("Chromosome position (T2T Chrom 1)")
+    ylab("") 
 }
 
 # ---- Read and process data once ----
@@ -117,9 +124,9 @@ p2 <- make_mapping_quality_plot_most(df_500, "Short-read 500bp (pretend it's 2x2
 p2_sr <- make_mapping_quality_plot_most(df_500_sr, "Short-read 500bp (pretend it's 2x250bp)")
 p2_bwa <- make_mapping_quality_plot_most(df_500_bwa, "Short-read 500bp (pretend it's 2x250bp), BWA-Mem2")
 
-p3 <- make_mapping_quality_plot_most(df_5000, "Long-read 5kbp, minimap2")
-p4 <- make_mapping_quality_plot_most(df_10000, "Long-read 10kbp, minimap2")
-p5 <- make_mapping_quality_plot_bottom(df_20000, "Long-read 20kbp, minimap2")
+p3 <- make_mapping_quality_plot_most(df_5000, "Long-read 5,000bp, minimap2")
+p4 <- make_mapping_quality_plot_most(df_10000, "Long-read 10,000bp, minimap2")
+p5 <- make_mapping_quality_plot_bottom(df_20000, "Long-read 20,000bp, minimap2")
 p5_legend <- make_mapping_quality_plot_legend(df_20000, "Long-read 20kbp")
 
 # ---- Combine and view ----
@@ -145,9 +152,11 @@ final <- plot_grid(grid, shared_legend, rel_widths = c(1, 0.12))
 final
 
 final_yaxis <- ggdraw() +
-  draw_label("Mapping Quality", angle = 90, vjust = -28, size = 10) +
+  draw_label("Re-mapping a chromosome to itself when broken into chunks (in silico) ",  vjust = -18, size = 10) +
+  draw_label("Mapping Quality", angle = 90, vjust = -31, size = 10) +
   draw_plot(final, x = 0.05, width = 0.90, height = 0.90)
 final_yaxis
 
+ggsave("final_yaxis.ggsave.png",final_yaxis)
 save_plot("final_yaxis.png",final_yaxis)
 ```
